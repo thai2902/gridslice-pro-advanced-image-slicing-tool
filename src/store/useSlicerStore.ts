@@ -12,8 +12,8 @@ interface SlicerState {
   imageUrl: string | null;
   imageDimensions: { width: number; height: number } | null;
   config: GridConfig;
-  rowHeights: number[]; // Explicit pixel heights for each row
-  colWidths: number[];  // Explicit pixel widths for each column
+  rowHeights: number[];
+  colWidths: number[];
   isProcessing: boolean;
   setImage: (url: string | null, dimensions?: { width: number; height: number }) => void;
   setProcessing: (processing: boolean) => void;
@@ -47,6 +47,10 @@ export const useSlicerStore = create<SlicerState>()(
       rowHeights: [],
       colWidths: [],
       setImage: (url, dimensions = null) => {
+        const currentUrl = get().imageUrl;
+        if (currentUrl && currentUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(currentUrl);
+        }
         if (!url || !dimensions) {
           set({ imageUrl: null, imageDimensions: null, rowHeights: [], colWidths: [], isProcessing: false });
           return;
@@ -71,7 +75,6 @@ export const useSlicerStore = create<SlicerState>()(
         nextConfig.gapX = Math.max(0, nextConfig.gapX);
         nextConfig.gapY = Math.max(0, nextConfig.gapY);
         let { colWidths, rowHeights, imageDimensions } = state;
-        // If structure changed, re-initialize arrays
         if (imageDimensions && (updates.rows !== undefined || updates.cols !== undefined || updates.padding !== undefined || updates.gapX !== undefined || updates.gapY !== undefined)) {
           colWidths = calculateUniformSizes(imageDimensions.width, nextConfig.cols, nextConfig.padding, nextConfig.gapX);
           rowHeights = calculateUniformSizes(imageDimensions.height, nextConfig.rows, nextConfig.padding, nextConfig.gapY);

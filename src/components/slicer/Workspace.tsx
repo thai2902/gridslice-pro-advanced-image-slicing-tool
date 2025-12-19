@@ -53,6 +53,7 @@ export function Workspace() {
     e.preventDefault();
     e.stopPropagation();
     setIsResizing({ type, index });
+    document.body.style.cursor = type === 'col' ? 'col-resize' : 'row-resize';
   };
   useEffect(() => {
     if (!isResizing || !imageDimensions || displaySize.width === 0) return;
@@ -89,7 +90,10 @@ export function Workspace() {
         }
       }
     };
-    const handleMouseUp = () => setIsResizing(null);
+    const handleMouseUp = () => {
+      setIsResizing(null);
+      document.body.style.cursor = '';
+    };
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
     return () => {
@@ -101,18 +105,28 @@ export function Workspace() {
     if (!imageUrl || displaySize.width === 0 || !imageDimensions) return null;
     const scaleX = displaySize.width / imageDimensions.width;
     const scaleY = displaySize.height / imageDimensions.height;
+    const pX = padding * scaleX;
+    const pY = padding * scaleY;
+    const gX = gapX * scaleX;
+    const gY = gapY * scaleY;
     const cells = [];
-    let currentY = padding * scaleY;
+    const masks = [];
+    // Outer padding masks
+    masks.push(<div key="p-t" className="absolute top-0 left-0 right-0 bg-black/40" style={{ height: `${pY}px` }} />);
+    masks.push(<div key="p-b" className="absolute bottom-0 left-0 right-0 bg-black/40" style={{ height: `${pY}px` }} />);
+    masks.push(<div key="p-l" className="absolute top-0 bottom-0 left-0 bg-black/40" style={{ width: `${pX}px`, top: `${pY}px`, bottom: `${pY}px` }} />);
+    masks.push(<div key="p-r" className="absolute top-0 bottom-0 right-0 bg-black/40" style={{ width: `${pX}px`, top: `${pY}px`, bottom: `${pY}px` }} />);
+    let currentY = pY;
     for (let r = 0; r < rows; r++) {
-      let currentX = padding * scaleX;
+      let currentX = pX;
       const h = rowHeights[r] * scaleY;
       for (let c = 0; c < cols; c++) {
         const w = colWidths[c] * scaleX;
         const index = r * cols + c + 1;
         cells.push(
           <div
-            key={`${r}-${c}`}
-            className="absolute border border-primary/20 bg-primary/5 flex items-center justify-center pointer-events-none"
+            key={`cell-${r}-${c}`}
+            className="absolute border border-primary/40 flex items-center justify-center pointer-events-none"
             style={{ left: `${currentX}px`, top: `${currentY}px`, width: `${w}px`, height: `${h}px` }}
           >
             {showNumbers && (
@@ -122,60 +136,80 @@ export function Workspace() {
             )}
           </div>
         );
-        currentX += w + (gapX * scaleX);
+        // Add horizontal gutter mask if not last col
+        if (c < cols - 1) {
+          masks.push(
+            <div 
+              key={`gx-${r}-${c}`} 
+              className="absolute bg-black/40" 
+              style={{ left: `${currentX + w}px`, top: `${currentY}px`, width: `${gX}px`, height: `${h}px` }} 
+            />
+          );
+        }
+        currentX += w + gX;
       }
-      currentY += h + (gapY * scaleY);
+      // Add vertical gutter mask if not last row
+      if (r < rows - 1) {
+        masks.push(
+          <div 
+            key={`gy-${r}`} 
+            className="absolute bg-black/40" 
+            style={{ left: `${pX}px`, top: `${currentY + h}px`, right: `${pX}px`, height: `${gY}px` }} 
+          />
+        );
+      }
+      currentY += h + gY;
     }
     const handles = [];
-    // Vertical Resizers (Col Widths)
-    let currentXPos = padding * scaleX;
+    // Vertical Resizers
+    let currentXPos = pX;
     for (let i = 0; i < cols - 1; i++) {
       currentXPos += colWidths[i] * scaleX;
-      const x = currentXPos + (gapX * scaleX) / 2;
+      const x = currentXPos + gX / 2;
       handles.push(
         <div
           key={`col-h-${i}`}
           onMouseDown={(e) => handleMouseDown(e, 'col', i)}
           className={cn(
-            "absolute top-0 bottom-0 w-4 -ml-2 z-30 cursor-col-resize group flex items-center justify-center",
+            "absolute top-0 bottom-0 w-8 -ml-4 z-30 cursor-col-resize group flex items-center justify-center",
             isResizing?.type === 'col' && isResizing.index === i && "opacity-100"
           )}
           style={{ left: `${x}px` }}
         >
-          <div className="w-0.5 h-full bg-primary/0 group-hover:bg-primary/50 transition-colors" />
+          <div className="w-0.5 h-full bg-primary/20 group-hover:bg-primary transition-colors" />
           <div className="absolute bg-primary text-white p-1 rounded-full scale-0 group-hover:scale-100 transition-transform shadow-lg">
             <MoveHorizontal className="w-3 h-3" />
           </div>
         </div>
       );
-      currentXPos += gapX * scaleX;
+      currentXPos += gX;
     }
-    // Horizontal Resizers (Row Heights)
-    let currentYPos = padding * scaleY;
+    // Horizontal Resizers
+    let currentYPos = pY;
     for (let i = 0; i < rows - 1; i++) {
       currentYPos += rowHeights[i] * scaleY;
-      const y = currentYPos + (gapY * scaleY) / 2;
+      const y = currentYPos + gY / 2;
       handles.push(
         <div
           key={`row-h-${i}`}
           onMouseDown={(e) => handleMouseDown(e, 'row', i)}
           className={cn(
-            "absolute left-0 right-0 h-4 -mt-2 z-30 cursor-row-resize group flex items-center justify-center",
+            "absolute left-0 right-0 h-8 -mt-4 z-30 cursor-row-resize group flex items-center justify-center",
             isResizing?.type === 'row' && isResizing.index === i && "opacity-100"
           )}
           style={{ top: `${y}px` }}
         >
-          <div className="h-0.5 w-full bg-primary/0 group-hover:bg-primary/50 transition-colors" />
+          <div className="h-0.5 w-full bg-primary/20 group-hover:bg-primary transition-colors" />
           <div className="absolute bg-primary text-white p-1 rounded-full scale-0 group-hover:scale-100 transition-transform shadow-lg">
             <MoveVertical className="w-3 h-3" />
           </div>
         </div>
       );
-      currentYPos += gapY * scaleY;
+      currentYPos += gY;
     }
     return (
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute inset-0 bg-black/20" style={{ clipPath: `inset(${padding * scaleY}px ${padding * scaleX}px)` }} />
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {masks}
         <div className="pointer-events-auto">{cells}</div>
         <div className="pointer-events-auto">{handles}</div>
       </div>
