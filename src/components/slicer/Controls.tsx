@@ -1,15 +1,40 @@
 import React from 'react';
-import { useSlicerStore } from '@/store/useSlicerStore';
+import { useSlicerStore, NumberPosition } from '@/store/useSlicerStore';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { Settings2, Type, RotateCcw, LayoutGrid, BoxSelect, Sparkles, Info } from 'lucide-react';
+import { 
+  Settings2, 
+  Type, 
+  RotateCcw, 
+  LayoutGrid, 
+  BoxSelect, 
+  Sparkles, 
+  Info,
+  ArrowUpLeft,
+  ArrowUpRight,
+  ArrowDownLeft,
+  ArrowDownRight
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { motion, AnimatePresence } from 'framer-motion';
 export function Controls() {
-  const config = useSlicerStore((s) => s.config);
+  const configRows = useSlicerStore((s) => s.config.rows);
+  const configCols = useSlicerStore((s) => s.config.cols);
+  const configPadding = useSlicerStore((s) => s.config.padding);
+  const configGapX = useSlicerStore((s) => s.config.gapX);
+  const configGapY = useSlicerStore((s) => s.config.gapY);
+  const configShowNumbers = useSlicerStore((s) => s.config.showNumbers);
+  const configNumberPosition = useSlicerStore((s) => s.config.numberPosition);
   const updateConfig = useSlicerStore((s) => s.updateConfig);
   const resetConfig = useSlicerStore((s) => s.resetConfig);
   const imageUrl = useSlicerStore((s) => s.imageUrl);
@@ -42,7 +67,7 @@ export function Controls() {
           {isCustom && <span className="flex items-center gap-1 text-primary font-bold"><Sparkles className="w-3 h-3" /> Custom Mode</span>}
         </p>
       </div>
-      <Accordion type="multiple" defaultValue={['grid', 'spacing']} className="w-full">
+      <Accordion type="multiple" defaultValue={['grid', 'spacing', 'visuals']} className="w-full">
         <AccordionItem value="grid" className="border-none">
           <AccordionTrigger className="hover:no-underline py-3">
             <div className="flex items-center gap-2 text-foreground font-semibold">
@@ -55,16 +80,16 @@ export function Controls() {
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Rows</Label>
-                  <span className="text-xs font-mono bg-secondary font-bold text-secondary-foreground px-2 py-0.5 rounded border border-border">{config.rows}</span>
+                  <span className="text-xs font-mono bg-secondary font-bold text-secondary-foreground px-2 py-0.5 rounded border border-border">{configRows}</span>
                 </div>
-                <Slider value={[config.rows]} min={1} max={24} step={1} onValueChange={([val]) => updateConfig({ rows: val })} />
+                <Slider value={[configRows]} min={1} max={24} step={1} onValueChange={([val]) => updateConfig({ rows: val })} />
               </div>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Columns</Label>
-                  <span className="text-xs font-mono bg-secondary font-bold text-secondary-foreground px-2 py-0.5 rounded border border-border">{config.cols}</span>
+                  <span className="text-xs font-mono bg-secondary font-bold text-secondary-foreground px-2 py-0.5 rounded border border-border">{configCols}</span>
                 </div>
-                <Slider value={[config.cols]} min={1} max={24} step={1} onValueChange={([val]) => updateConfig({ cols: val })} />
+                <Slider value={[configCols]} min={1} max={24} step={1} onValueChange={([val]) => updateConfig({ cols: val })} />
               </div>
               {isCustom && (
                 <Button variant="secondary" size="sm" className="w-full gap-2 text-[10px] font-bold uppercase" onClick={recomputeUniformSizes}>
@@ -85,16 +110,16 @@ export function Controls() {
           <AccordionContent className="pt-2 pb-6 space-y-6">
             <div className="space-y-5">
               <div className="space-y-3">
-                <div className="flex justify-between items-center"><Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Outer Padding</Label><span className="text-xs font-mono font-bold">{config.padding}px</span></div>
-                <Slider value={[config.padding]} min={0} max={250} step={1} onValueChange={([val]) => updateConfig({ padding: val })} />
+                <div className="flex justify-between items-center"><Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Outer Padding</Label><span className="text-xs font-mono font-bold">{configPadding}px</span></div>
+                <Slider value={[configPadding]} min={0} max={250} step={1} onValueChange={([val]) => updateConfig({ padding: val })} />
               </div>
               <div className="space-y-3">
-                <div className="flex justify-between items-center"><Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Horiz. Gutters</Label><span className="text-xs font-mono font-bold">{config.gapX}px</span></div>
-                <Slider value={[config.gapX]} min={0} max={100} step={1} onValueChange={([val]) => updateConfig({ gapX: val })} />
+                <div className="flex justify-between items-center"><Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Horiz. Gutters</Label><span className="text-xs font-mono font-bold">{configGapX}px</span></div>
+                <Slider value={[configGapX]} min={0} max={100} step={1} onValueChange={([val]) => updateConfig({ gapX: val })} />
               </div>
               <div className="space-y-3">
-                <div className="flex justify-between items-center"><Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Vert. Gutters</Label><span className="text-xs font-mono font-bold">{config.gapY}px</span></div>
-                <Slider value={[config.gapY]} min={0} max={100} step={1} onValueChange={([val]) => updateConfig({ gapY: val })} />
+                <div className="flex justify-between items-center"><Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Vert. Gutters</Label><span className="text-xs font-mono font-bold">{configGapY}px</span></div>
+                <Slider value={[configGapY]} min={0} max={100} step={1} onValueChange={([val]) => updateConfig({ gapY: val })} />
               </div>
             </div>
           </AccordionContent>
@@ -107,14 +132,59 @@ export function Controls() {
               <span className="text-sm">Output Markers</span>
             </div>
           </AccordionTrigger>
-          <AccordionContent className="pt-2 pb-4">
+          <AccordionContent className="pt-2 pb-4 space-y-4">
             <div className="flex items-center justify-between bg-muted/40 p-4 rounded-xl border border-border/50">
               <div className="space-y-0.5">
                 <Label htmlFor="show-numbers" className="cursor-pointer text-sm font-semibold">Burn Labels</Label>
                 <p className="text-[10px] text-muted-foreground">Add index numbers to export</p>
               </div>
-              <Switch id="show-numbers" checked={config.showNumbers} onCheckedChange={(checked) => updateConfig({ showNumbers: checked })} />
+              <Switch id="show-numbers" checked={configShowNumbers} onCheckedChange={(checked) => updateConfig({ showNumbers: checked })} />
             </div>
+            <AnimatePresence>
+              {configShowNumbers && (
+                <motion.div 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="space-y-3 pt-2"
+                >
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Position</Label>
+                  </div>
+                  <Select value={configNumberPosition} onValueChange={(val: NumberPosition) => updateConfig({ numberPosition: val })}>
+                    <SelectTrigger className="w-full bg-secondary">
+                      <SelectValue placeholder="Select position" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="top-left">
+                        <div className="flex items-center gap-2">
+                          <ArrowUpLeft className="w-4 h-4" />
+                          <span>Top Left</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="top-right">
+                        <div className="flex items-center gap-2">
+                          <ArrowUpRight className="w-4 h-4" />
+                          <span>Top Right</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="bottom-left">
+                        <div className="flex items-center gap-2">
+                          <ArrowDownLeft className="w-4 h-4" />
+                          <span>Bottom Left</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="bottom-right">
+                        <div className="flex items-center gap-2">
+                          <ArrowDownRight className="w-4 h-4" />
+                          <span>Bottom Right</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </AccordionContent>
         </AccordionItem>
       </Accordion>

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+export type NumberPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
 interface GridConfig {
   rows: number;
   cols: number;
@@ -7,6 +8,7 @@ interface GridConfig {
   gapY: number;
   padding: number;
   showNumbers: boolean;
+  numberPosition: NumberPosition;
 }
 interface SlicerState {
   imageUrl: string | null;
@@ -30,6 +32,7 @@ const DEFAULT_CONFIG: GridConfig = {
   gapY: 0,
   padding: 0,
   showNumbers: true,
+  numberPosition: 'top-left',
 };
 const calculateUniformSizes = (total: number, count: number, padding: number, gap: number) => {
   if (count <= 0) return [];

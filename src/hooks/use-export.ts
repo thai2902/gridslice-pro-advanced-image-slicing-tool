@@ -13,6 +13,7 @@ export function useExport() {
   const gapY = useSlicerStore((s) => s.config.gapY);
   const padding = useSlicerStore((s) => s.config.padding);
   const showNumbers = useSlicerStore((s) => s.config.showNumbers);
+  const numberPosition = useSlicerStore((s) => s.config.numberPosition);
   const rowHeights = useSlicerStore((s) => s.rowHeights);
   const colWidths = useSlicerStore((s) => s.colWidths);
   const setProcessing = useSlicerStore((s) => s.setProcessing);
@@ -39,7 +40,6 @@ export function useExport() {
       const totalSlices = slices.length;
       for (let i = 0; i < totalSlices; i++) {
         const slice = slices[i];
-        // Defensive check for valid dimensions
         if (slice.width < 1 || slice.height < 1) {
           console.warn(`Skipping slice ${slice.label} due to zero/negative dimensions.`);
           continue;
@@ -55,17 +55,41 @@ export function useExport() {
         );
         if (showNumbers) {
           const fontSize = Math.max(12, Math.min(slice.width, slice.height) * 0.15);
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-          ctx.font = `bold ${fontSize}px Inter, -apple-system, sans-serif`;
-          const text = slice.label;
-          const metrics = ctx.measureText(text);
           const textPadding = fontSize * 0.4;
+          const text = slice.label;
+          ctx.font = `bold ${fontSize}px Inter, -apple-system, sans-serif`;
+          const metrics = ctx.measureText(text);
+          const badgeWidth = metrics.width + textPadding;
+          const badgeHeight = fontSize + textPadding;
+          // Calculate badge coordinates
+          let badgeX = 5;
+          let badgeY = 5;
+          const margin = 10;
+          switch (numberPosition) {
+            case 'top-left':
+              badgeX = margin;
+              badgeY = margin;
+              break;
+            case 'top-right':
+              badgeX = slice.width - badgeWidth - margin;
+              badgeY = margin;
+              break;
+            case 'bottom-left':
+              badgeX = margin;
+              badgeY = slice.height - badgeHeight - margin;
+              break;
+            case 'bottom-right':
+              badgeX = slice.width - badgeWidth - margin;
+              badgeY = slice.height - badgeHeight - margin;
+              break;
+          }
           // Draw badge background
-          ctx.fillRect(5, 5, metrics.width + textPadding, fontSize + textPadding);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+          ctx.fillRect(badgeX, badgeY, badgeWidth, badgeHeight);
           // Draw text
           ctx.fillStyle = '#000000';
           ctx.textBaseline = 'top';
-          ctx.fillText(text, 5 + textPadding / 2, 5 + textPadding / 2);
+          ctx.fillText(text, badgeX + textPadding / 2, badgeY + textPadding / 2);
         }
         const blob = await new Promise<Blob | null>((resolve) =>
           canvas.toBlob((b) => resolve(b), 'image/png')
@@ -84,6 +108,6 @@ export function useExport() {
     } finally {
       setProcessing(false);
     }
-  }, [imageUrl, dims, rows, cols, gapX, gapY, padding, showNumbers, rowHeights, colWidths, setProcessing]);
+  }, [imageUrl, dims, rows, cols, gapX, gapY, padding, showNumbers, numberPosition, rowHeights, colWidths, setProcessing]);
   return { exportSlices };
 }

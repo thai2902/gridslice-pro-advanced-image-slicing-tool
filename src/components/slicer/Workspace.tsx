@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, X, Focus, MoveHorizontal, MoveVertical } from 'lucide-react';
-import { useSlicerStore } from '@/store/useSlicerStore';
+import { useSlicerStore, NumberPosition } from '@/store/useSlicerStore';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 export function Workspace() {
@@ -14,6 +14,7 @@ export function Workspace() {
   const gapY = useSlicerStore((s) => s.config.gapY);
   const padding = useSlicerStore((s) => s.config.padding);
   const showNumbers = useSlicerStore((s) => s.config.showNumbers);
+  const numberPosition = useSlicerStore((s) => s.config.numberPosition);
   const colWidths = useSlicerStore((s) => s.colWidths);
   const rowHeights = useSlicerStore((s) => s.rowHeights);
   const setColWidth = useSlicerStore((s) => s.setColWidth);
@@ -101,6 +102,15 @@ export function Workspace() {
       window.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isResizing, colWidths, rowHeights, imageDimensions, displaySize, padding, gapX, gapY, setColWidth, setRowHeight]);
+  const getBadgePositionClasses = (pos: NumberPosition) => {
+    switch (pos) {
+      case 'top-left': return 'top-1 left-1';
+      case 'top-right': return 'top-1 right-1';
+      case 'bottom-left': return 'bottom-1 left-1';
+      case 'bottom-right': return 'bottom-1 right-1';
+      default: return 'top-1 left-1';
+    }
+  };
   const renderOverlay = () => {
     if (!imageUrl || displaySize.width === 0 || !imageDimensions) return null;
     const scaleX = displaySize.width / imageDimensions.width;
@@ -130,38 +140,42 @@ export function Workspace() {
             style={{ left: `${currentX}px`, top: `${currentY}px`, width: `${w}px`, height: `${h}px` }}
           >
             {showNumbers && (
-              <span className="text-[10px] font-bold text-primary bg-background/90 backdrop-blur-sm px-1.5 py-0.5 rounded shadow-sm border border-border">
+              <motion.span 
+                layout
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                className={cn(
+                  "absolute text-[10px] font-bold text-primary bg-background/90 backdrop-blur-sm px-1.5 py-0.5 rounded shadow-sm border border-border pointer-events-none z-10",
+                  getBadgePositionClasses(numberPosition)
+                )}
+              >
                 {index.toString().padStart(2, '0')}
-              </span>
+              </motion.span>
             )}
           </div>
         );
-        // Add horizontal gutter mask if not last col
         if (c < cols - 1) {
           masks.push(
-            <div 
-              key={`gx-${r}-${c}`} 
-              className="absolute bg-black/40" 
-              style={{ left: `${currentX + w}px`, top: `${currentY}px`, width: `${gX}px`, height: `${h}px` }} 
+            <div
+              key={`gx-${r}-${c}`}
+              className="absolute bg-black/40"
+              style={{ left: `${currentX + w}px`, top: `${currentY}px`, width: `${gX}px`, height: `${h}px` }}
             />
           );
         }
         currentX += w + gX;
       }
-      // Add vertical gutter mask if not last row
       if (r < rows - 1) {
         masks.push(
-          <div 
-            key={`gy-${r}`} 
-            className="absolute bg-black/40" 
-            style={{ left: `${pX}px`, top: `${currentY + h}px`, right: `${pX}px`, height: `${gY}px` }} 
+          <div
+            key={`gy-${r}`}
+            className="absolute bg-black/40"
+            style={{ left: `${pX}px`, top: `${currentY + h}px`, right: `${pX}px`, height: `${gY}px` }}
           />
         );
       }
       currentY += h + gY;
     }
     const handles = [];
-    // Vertical Resizers
     let currentXPos = pX;
     for (let i = 0; i < cols - 1; i++) {
       currentXPos += colWidths[i] * scaleX;
@@ -184,7 +198,6 @@ export function Workspace() {
       );
       currentXPos += gX;
     }
-    // Horizontal Resizers
     let currentYPos = pY;
     for (let i = 0; i < rows - 1; i++) {
       currentYPos += rowHeights[i] * scaleY;
