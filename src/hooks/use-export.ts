@@ -13,101 +13,66 @@ export function useExport() {
   const gapY = useSlicerStore((s) => s.config.gapY);
   const padding = useSlicerStore((s) => s.config.padding);
   const showNumbers = useSlicerStore((s) => s.config.showNumbers);
-  const numberPosition = useSlicerStore((s) => s.config.numberPosition);
-  const rowHeights = useSlicerStore((s) => s.rowHeights);
-  const colWidths = useSlicerStore((s) => s.colWidths);
   const setProcessing = useSlicerStore((s) => s.setProcessing);
   const exportSlices = useCallback(async () => {
     if (!imageUrl || !dims) {
-      toast.error('No image loaded to export');
+      toast.error('No image loaded');
       return;
     }
     setProcessing(true);
-    const toastId = toast.loading('Studio: Initializing high-res slice engine...');
+    const toastId = toast.loading('Processing slices...');
     try {
       const zip = new JSZip();
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('System error: Could not initialize graphics context.');
+      if (!ctx) throw new Error('Could not get canvas context');
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.src = imageUrl;
       await new Promise((resolve, reject) => {
         img.onload = resolve;
-        img.onerror = () => reject(new Error('Failed to load image source for processing.'));
+        img.onerror = reject;
       });
-      const slices = calculateSlices(dims.width, dims.height, rows, cols, padding, gapX, gapY, rowHeights, colWidths);
-      const totalSlices = slices.length;
-      for (let i = 0; i < totalSlices; i++) {
-        const slice = slices[i];
-        if (slice.width < 1 || slice.height < 1) {
-          console.warn(`Skipping slice ${slice.label} due to zero/negative dimensions.`);
-          continue;
-        }
-        toast.loading(`Processing slice ${i + 1}/${totalSlices}...`, { id: toastId });
+      const slices = calculateSlices(dims.width, dims.height, rows, cols, padding, gapX, gapY);
+      for (const slice of slices) {
         canvas.width = slice.width;
         canvas.height = slice.height;
+        // Clear canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Draw the cropped portion of the original image
         ctx.drawImage(
           img,
           slice.x, slice.y, slice.width, slice.height,
           0, 0, slice.width, slice.height
         );
+        // Optional numbering overlay on the actual output
         if (showNumbers) {
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
           const fontSize = Math.max(12, Math.min(slice.width, slice.height) * 0.15);
-          const textPadding = fontSize * 0.4;
+          ctx.font = `bold ${fontSize}px Inter, sans-serif`;
           const text = slice.label;
-          ctx.font = `bold ${fontSize}px Inter, -apple-system, sans-serif`;
           const metrics = ctx.measureText(text);
-          const badgeWidth = metrics.width + textPadding;
-          const badgeHeight = fontSize + textPadding;
-          // Calculate badge coordinates
-          let badgeX = 5;
-          let badgeY = 5;
-          const margin = 10;
-          switch (numberPosition) {
-            case 'top-left':
-              badgeX = margin;
-              badgeY = margin;
-              break;
-            case 'top-right':
-              badgeX = slice.width - badgeWidth - margin;
-              badgeY = margin;
-              break;
-            case 'bottom-left':
-              badgeX = margin;
-              badgeY = slice.height - badgeHeight - margin;
-              break;
-            case 'bottom-right':
-              badgeX = slice.width - badgeWidth - margin;
-              badgeY = slice.height - badgeHeight - margin;
-              break;
-          }
-          // Draw badge background
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-          ctx.fillRect(badgeX, badgeY, badgeWidth, badgeHeight);
-          // Draw text
+          const padding = fontSize * 0.4;
+          ctx.fillRect(5, 5, metrics.width + padding, fontSize + padding);
           ctx.fillStyle = '#000000';
-          ctx.textBaseline = 'top';
-          ctx.fillText(text, badgeX + textPadding / 2, badgeY + textPadding / 2);
+          ctx.fillText(text, 5 + padding / 2, 5 + fontSize);
         }
-        const blob = await new Promise<Blob | null>((resolve) =>
+        const blob = await new Promise<Blob | null>((resolve) => 
           canvas.toBlob((b) => resolve(b), 'image/png')
         );
         if (blob) {
           zip.file(`slice_${slice.row.toString().padStart(2, '0')}_${slice.col.toString().padStart(2, '0')}.png`, blob);
         }
       }
-      toast.loading('Finalizing ZIP bundle...', { id: toastId });
       const content = await zip.generateAsync({ type: 'blob' });
-      saveAs(content, `gridslice_pro_${Date.now()}.zip`);
-      toast.success('Professional export complete!', { id: toastId });
+      saveAs(content, `gridslice_export_${Date.now()}.zip`);
+      toast.success('Export complete!', { id: toastId });
     } catch (error) {
-      console.error('Studio Export failed:', error);
-      toast.error(error instanceof Error ? error.message : 'Processing failed. Please check image constraints.', { id: toastId });
+      console.error('Export failed:', error);
+      toast.error('Export failed. Check console for details.', { id: toastId });
     } finally {
       setProcessing(false);
     }
-  }, [imageUrl, dims, rows, cols, gapX, gapY, padding, showNumbers, numberPosition, rowHeights, colWidths, setProcessing]);
+  }, [imageUrl, dims, rows, cols, gapX, gapY, padding, showNumbers, setProcessing]);
   return { exportSlices };
 }
