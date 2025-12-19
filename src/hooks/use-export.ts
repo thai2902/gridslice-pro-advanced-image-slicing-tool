@@ -13,6 +13,8 @@ export function useExport() {
   const gapY = useSlicerStore((s) => s.config.gapY);
   const padding = useSlicerStore((s) => s.config.padding);
   const showNumbers = useSlicerStore((s) => s.config.showNumbers);
+  const rowHeights = useSlicerStore((s) => s.rowHeights);
+  const colWidths = useSlicerStore((s) => s.colWidths);
   const setProcessing = useSlicerStore((s) => s.setProcessing);
   const exportSlices = useCallback(async () => {
     if (!imageUrl || !dims) {
@@ -20,7 +22,7 @@ export function useExport() {
       return;
     }
     setProcessing(true);
-    const toastId = toast.loading('Processing slices...');
+    const toastId = toast.loading('Generating high-res slices...');
     try {
       const zip = new JSZip();
       const canvas = document.createElement('canvas');
@@ -33,31 +35,28 @@ export function useExport() {
         img.onload = resolve;
         img.onerror = reject;
       });
-      const slices = calculateSlices(dims.width, dims.height, rows, cols, padding, gapX, gapY);
+      const slices = calculateSlices(dims.width, dims.height, rows, cols, padding, gapX, gapY, rowHeights, colWidths);
       for (const slice of slices) {
         canvas.width = slice.width;
         canvas.height = slice.height;
-        // Clear canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        // Draw the cropped portion of the original image
         ctx.drawImage(
           img,
           slice.x, slice.y, slice.width, slice.height,
           0, 0, slice.width, slice.height
         );
-        // Optional numbering overlay on the actual output
         if (showNumbers) {
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
           const fontSize = Math.max(12, Math.min(slice.width, slice.height) * 0.15);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
           ctx.font = `bold ${fontSize}px Inter, sans-serif`;
           const text = slice.label;
           const metrics = ctx.measureText(text);
-          const padding = fontSize * 0.4;
-          ctx.fillRect(5, 5, metrics.width + padding, fontSize + padding);
+          const textPadding = fontSize * 0.4;
+          ctx.fillRect(5, 5, metrics.width + textPadding, fontSize + textPadding);
           ctx.fillStyle = '#000000';
-          ctx.fillText(text, 5 + padding / 2, 5 + fontSize);
+          ctx.fillText(text, 5 + textPadding / 2, 5 + fontSize);
         }
-        const blob = await new Promise<Blob | null>((resolve) => 
+        const blob = await new Promise<Blob | null>((resolve) =>
           canvas.toBlob((b) => resolve(b), 'image/png')
         );
         if (blob) {
@@ -65,14 +64,14 @@ export function useExport() {
         }
       }
       const content = await zip.generateAsync({ type: 'blob' });
-      saveAs(content, `gridslice_export_${Date.now()}.zip`);
-      toast.success('Export complete!', { id: toastId });
+      saveAs(content, `gridslice_pro_${Date.now()}.zip`);
+      toast.success('Professional export complete!', { id: toastId });
     } catch (error) {
       console.error('Export failed:', error);
-      toast.error('Export failed. Check console for details.', { id: toastId });
+      toast.error('Processing failed. Please try again.', { id: toastId });
     } finally {
       setProcessing(false);
     }
-  }, [imageUrl, dims, rows, cols, gapX, gapY, padding, showNumbers, setProcessing]);
+  }, [imageUrl, dims, rows, cols, gapX, gapY, padding, showNumbers, rowHeights, colWidths, setProcessing]);
   return { exportSlices };
 }

@@ -1,20 +1,26 @@
 import React, { useCallback, useRef, useState, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, X, ImageIcon, Focus } from 'lucide-react';
+import { Upload, X, Focus, MoveHorizontal, MoveVertical } from 'lucide-react';
 import { useSlicerStore } from '@/store/useSlicerStore';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 export function Workspace() {
   const imageUrl = useSlicerStore((s) => s.imageUrl);
   const setImage = useSlicerStore((s) => s.setImage);
+  const imageDimensions = useSlicerStore((s) => s.imageDimensions);
   const rows = useSlicerStore((s) => s.config.rows);
   const cols = useSlicerStore((s) => s.config.cols);
   const gapX = useSlicerStore((s) => s.config.gapX);
   const gapY = useSlicerStore((s) => s.config.gapY);
   const padding = useSlicerStore((s) => s.config.padding);
   const showNumbers = useSlicerStore((s) => s.config.showNumbers);
+  const colWidths = useSlicerStore((s) => s.colWidths);
+  const rowHeights = useSlicerStore((s) => s.rowHeights);
+  const setColWidth = useSlicerStore((s) => s.setColWidth);
+  const setRowHeight = useSlicerStore((s) => s.setRowHeight);
   const containerRef = useRef<HTMLDivElement>(null);
   const [displaySize, setDisplaySize] = useState({ width: 0, height: 0 });
+  const [isResizing, setIsResizing] = useState<{ type: 'col' | 'row'; index: number } | null>(null);
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
     if (file) {
@@ -34,41 +40,80 @@ export function Workspace() {
   });
   useEffect(() => {
     if (!containerRef.current || !imageUrl) return;
-    
     const updateSize = () => {
       const img = containerRef.current?.querySelector('img');
-      if (img) {
-        setDisplaySize({ width: img.clientWidth, height: img.clientHeight });
-      }
+      if (img) setDisplaySize({ width: img.clientWidth, height: img.clientHeight });
     };
-    
     const observer = new ResizeObserver(updateSize);
     observer.observe(containerRef.current);
-    updateSize(); // Initial size
+    updateSize();
     return () => observer.disconnect();
   }, [imageUrl]);
+  const handleMouseDown = (e: React.MouseEvent, type: 'col' | 'row', index: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizing({ type, index });
+  };
+  useEffect(() => {
+    if (!isResizing || !imageDimensions || displaySize.width === 0) return;
+    const scaleX = imageDimensions.width / displaySize.width;
+    const scaleY = imageDimensions.height / displaySize.height;
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      if (isResizing.type === 'col') {
+        const mouseX = (e.clientX - rect.left) * scaleX;
+        let prevSum = padding;
+        for (let i = 0; i < isResizing.index; i++) {
+          prevSum += colWidths[i] + gapX;
+        }
+        const currentW = colWidths[isResizing.index];
+        const nextW = colWidths[isResizing.index + 1];
+        const delta = mouseX - (prevSum + currentW);
+        if (currentW + delta > 5 && nextW - delta > 5) {
+          setColWidth(isResizing.index, currentW + delta);
+          setColWidth(isResizing.index + 1, nextW - delta);
+        }
+      } else {
+        const mouseY = (e.clientY - rect.top) * scaleY;
+        let prevSum = padding;
+        for (let i = 0; i < isResizing.index; i++) {
+          prevSum += rowHeights[i] + gapY;
+        }
+        const currentH = rowHeights[isResizing.index];
+        const nextH = rowHeights[isResizing.index + 1];
+        const delta = mouseY - (prevSum + currentH);
+        if (currentH + delta > 5 && nextH - delta > 5) {
+          setRowHeight(isResizing.index, currentH + delta);
+          setRowHeight(isResizing.index + 1, nextH - delta);
+        }
+      }
+    };
+    const handleMouseUp = () => setIsResizing(null);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, colWidths, rowHeights, imageDimensions, displaySize, padding, gapX, gapY, setColWidth, setRowHeight]);
   const renderOverlay = () => {
-    if (!imageUrl || displaySize.width === 0) return null;
+    if (!imageUrl || displaySize.width === 0 || !imageDimensions) return null;
+    const scaleX = displaySize.width / imageDimensions.width;
+    const scaleY = displaySize.height / imageDimensions.height;
     const cells = [];
-    // Scale gaps and padding to match display size vs original size
-    // In preview, we simplify by just using the display pixels as "units"
-    const cellWidth = cols > 0 ? (displaySize.width - 2 * padding - (cols - 1) * gapX) / cols : 0;
-    const cellHeight = rows > 0 ? (displaySize.height - 2 * padding - (rows - 1) * gapY) / rows : 0;
+    let currentY = padding * scaleY;
     for (let r = 0; r < rows; r++) {
+      let currentX = padding * scaleX;
+      const h = rowHeights[r] * scaleY;
       for (let c = 0; c < cols; c++) {
-        const left = padding + c * (Math.max(0, cellWidth + gapX));
-        const top = padding + r * (Math.max(0, cellHeight + gapY));
+        const w = colWidths[c] * scaleX;
         const index = r * cols + c + 1;
         cells.push(
           <div
             key={`${r}-${c}`}
-            className="absolute border border-primary/30 bg-primary/5 flex items-center justify-center pointer-events-none transition-all duration-200"
-            style={{
-              left: `${left}px`,
-              top: `${top}px`,
-              width: `${cellWidth}px`,
-              height: `${cellHeight}px`,
-            }}
+            className="absolute border border-primary/20 bg-primary/5 flex items-center justify-center pointer-events-none"
+            style={{ left: `${currentX}px`, top: `${currentY}px`, width: `${w}px`, height: `${h}px` }}
           >
             {showNumbers && (
               <span className="text-[10px] font-bold text-primary bg-background/90 backdrop-blur-sm px-1.5 py-0.5 rounded shadow-sm border border-border">
@@ -77,20 +122,62 @@ export function Workspace() {
             )}
           </div>
         );
+        currentX += w + (gapX * scaleX);
       }
+      currentY += h + (gapY * scaleY);
+    }
+    const handles = [];
+    // Vertical Resizers (Col Widths)
+    let currentXPos = padding * scaleX;
+    for (let i = 0; i < cols - 1; i++) {
+      currentXPos += colWidths[i] * scaleX;
+      const x = currentXPos + (gapX * scaleX) / 2;
+      handles.push(
+        <div
+          key={`col-h-${i}`}
+          onMouseDown={(e) => handleMouseDown(e, 'col', i)}
+          className={cn(
+            "absolute top-0 bottom-0 w-4 -ml-2 z-30 cursor-col-resize group flex items-center justify-center",
+            isResizing?.type === 'col' && isResizing.index === i && "opacity-100"
+          )}
+          style={{ left: `${x}px` }}
+        >
+          <div className="w-0.5 h-full bg-primary/0 group-hover:bg-primary/50 transition-colors" />
+          <div className="absolute bg-primary text-white p-1 rounded-full scale-0 group-hover:scale-100 transition-transform shadow-lg">
+            <MoveHorizontal className="w-3 h-3" />
+          </div>
+        </div>
+      );
+      currentXPos += gapX * scaleX;
+    }
+    // Horizontal Resizers (Row Heights)
+    let currentYPos = padding * scaleY;
+    for (let i = 0; i < rows - 1; i++) {
+      currentYPos += rowHeights[i] * scaleY;
+      const y = currentYPos + (gapY * scaleY) / 2;
+      handles.push(
+        <div
+          key={`row-h-${i}`}
+          onMouseDown={(e) => handleMouseDown(e, 'row', i)}
+          className={cn(
+            "absolute left-0 right-0 h-4 -mt-2 z-30 cursor-row-resize group flex items-center justify-center",
+            isResizing?.type === 'row' && isResizing.index === i && "opacity-100"
+          )}
+          style={{ top: `${y}px` }}
+        >
+          <div className="h-0.5 w-full bg-primary/0 group-hover:bg-primary/50 transition-colors" />
+          <div className="absolute bg-primary text-white p-1 rounded-full scale-0 group-hover:scale-100 transition-transform shadow-lg">
+            <MoveVertical className="w-3 h-3" />
+          </div>
+        </div>
+      );
+      currentYPos += gapY * scaleY;
     }
     return (
       <div className="absolute inset-0 pointer-events-none">
-        {/* Discarded areas (Gaps and Padding) represented by darkened overlay */}
-        <div className="absolute inset-0 bg-black/40" style={{ 
-          maskImage: `linear-gradient(black, black)`,
-          WebkitMaskImage: `linear-gradient(black, black)`,
-          clipPath: `inset(${padding}px)` 
-        }} />
-        {/* Highlighted active grid area */}
-        <div className="absolute inset-0 border-2 border-dashed border-primary/20 pointer-events-none" style={{ margin: `${padding}px` }} />
-        {/* Grid Cells */}
-        {cells}
+        <div className="absolute inset-0 bg-black/20" style={{ clipPath: `inset(${padding * scaleY}px ${padding * scaleX}px)` }} />
+        <div className="pointer-events-auto">{cells}</div>
+        <div className="pointer-events-auto">{handles}</div>
       </div>
     );
   };
@@ -106,60 +193,21 @@ export function Workspace() {
       <input {...getInputProps()} />
       <AnimatePresence>
         {!imageUrl ? (
-          <motion.div
-            key="empty"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="text-center space-y-6 p-12 max-w-sm"
-          >
-            <div className="relative mx-auto w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary group-hover:scale-110 transition-transform duration-300">
-              <Upload className="w-10 h-10" />
-              <div className="absolute -inset-4 bg-primary/5 rounded-full blur-2xl animate-pulse" />
-            </div>
+          <motion.div key="empty" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-center space-y-6 p-12 max-w-sm">
+            <div className="mx-auto w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary"><Upload className="w-10 h-10" /></div>
             <div className="space-y-2">
               <h2 className="text-xl font-bold tracking-tight">Slice with Precision</h2>
-              <p className="text-sm text-muted-foreground">
-                Drag and drop your high-res image here to start your grid project.
-              </p>
-            </div>
-            <div className="flex items-center justify-center gap-4 text-xs font-medium text-muted-foreground/60 uppercase tracking-widest">
-              <span>PNG</span>
-              <span className="w-1 h-1 rounded-full bg-border" />
-              <span>JPG</span>
-              <span className="w-1 h-1 rounded-full bg-border" />
-              <span>WEBP</span>
+              <p className="text-sm text-muted-foreground">Drag and drop your high-res image here to start your grid project.</p>
             </div>
           </motion.div>
         ) : (
-          <motion.div 
-            key="preview"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="relative w-full h-full p-6 md:p-12 flex items-center justify-center"
-          >
-            <div ref={containerRef} className="relative shadow-2xl rounded-lg overflow-hidden ring-1 ring-border bg-white group">
-              <img
-                src={imageUrl}
-                alt="Studio Preview"
-                className="max-w-full max-h-[65vh] object-contain block select-none"
-              />
+          <motion.div key="preview" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="relative w-full h-full p-6 md:p-12 flex items-center justify-center">
+            <div ref={containerRef} className="relative shadow-2xl rounded-lg overflow-hidden ring-1 ring-border bg-white select-none">
+              <img src={imageUrl} alt="Studio Preview" className="max-w-full max-h-[65vh] object-contain block pointer-events-none" />
               {renderOverlay()}
             </div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setImage(null);
-              }}
-              className="absolute top-4 right-4 p-2 bg-destructive text-destructive-foreground rounded-full shadow-lg hover:scale-110 active:scale-95 transition-all z-20 group"
-              title="Remove Image"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-background/90 backdrop-blur-md px-3 py-1.5 rounded-full border shadow-sm text-[10px] font-medium uppercase tracking-wider text-muted-foreground select-none">
-              <Focus className="w-3 h-3 text-primary" />
-              Real-time Preview
-            </div>
+            <button onClick={(e) => { e.stopPropagation(); setImage(null); }} className="absolute top-4 right-4 p-2 bg-destructive text-destructive-foreground rounded-full shadow-lg hover:scale-110 active:scale-95 transition-all z-40"><X className="w-5 h-5" /></button>
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-background/90 backdrop-blur-md px-3 py-1.5 rounded-full border shadow-sm text-[10px] font-medium uppercase tracking-wider text-muted-foreground"><Focus className="w-3 h-3 text-primary" />Interactive Precision Studio</div>
           </motion.div>
         )}
       </AnimatePresence>
