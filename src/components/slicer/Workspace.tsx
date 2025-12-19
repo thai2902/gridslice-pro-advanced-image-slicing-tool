@@ -34,15 +34,17 @@ export function Workspace() {
   });
   useEffect(() => {
     if (!containerRef.current || !imageUrl) return;
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const img = entry.target.querySelector('img');
-        if (img) {
-          setDisplaySize({ width: img.clientWidth, height: img.clientHeight });
-        }
+    
+    const updateSize = () => {
+      const img = containerRef.current?.querySelector('img');
+      if (img) {
+        setDisplaySize({ width: img.clientWidth, height: img.clientHeight });
       }
-    });
+    };
+    
+    const observer = new ResizeObserver(updateSize);
     observer.observe(containerRef.current);
+    updateSize(); // Initial size
     return () => observer.disconnect();
   }, [imageUrl]);
   const renderOverlay = () => {
@@ -50,12 +52,12 @@ export function Workspace() {
     const cells = [];
     // Scale gaps and padding to match display size vs original size
     // In preview, we simplify by just using the display pixels as "units"
-    const cellWidth = (displaySize.width - 2 * padding - (cols - 1) * gapX) / cols;
-    const cellHeight = (displaySize.height - 2 * padding - (rows - 1) * gapY) / rows;
+    const cellWidth = cols > 0 ? (displaySize.width - 2 * padding - (cols - 1) * gapX) / cols : 0;
+    const cellHeight = rows > 0 ? (displaySize.height - 2 * padding - (rows - 1) * gapY) / rows : 0;
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
-        const left = padding + c * (cellWidth + gapX);
-        const top = padding + r * (cellHeight + gapY);
+        const left = padding + c * (Math.max(0, cellWidth + gapX));
+        const top = padding + r * (Math.max(0, cellHeight + gapY));
         const index = r * cols + c + 1;
         cells.push(
           <div
@@ -102,9 +104,9 @@ export function Workspace() {
       )}
     >
       <input {...getInputProps()} />
-      <AnimatePresence mode="wait">
+      <AnimatePresence>
         {!imageUrl ? (
-          <motion.div 
+          <motion.div
             key="empty"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -141,10 +143,6 @@ export function Workspace() {
                 src={imageUrl}
                 alt="Studio Preview"
                 className="max-w-full max-h-[65vh] object-contain block select-none"
-                onLoad={(e) => {
-                  const img = e.currentTarget;
-                  setDisplaySize({ width: img.clientWidth, height: img.clientHeight });
-                }}
               />
               {renderOverlay()}
             </div>

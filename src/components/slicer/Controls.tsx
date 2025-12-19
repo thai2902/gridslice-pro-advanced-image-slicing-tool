@@ -154,7 +154,7 @@ export function Controls() {
               <Switch
                 id="show-numbers"
                 checked={config.showNumbers}
-                onValueChange={(val) => updateConfig({ showNumbers: val })}
+                onCheckedChange={(checked: boolean) => updateConfig({ showNumbers: checked })}
                 className="data-[state=checked]:bg-primary"
               />
             </div>
