@@ -4,7 +4,7 @@
  */
  {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "vite-reference",
+	"name": "gridslice-pro-7r1op4fxovrnbnyyop3wc",
 	"main": "worker/index.ts",
 	"compatibility_date": "2025-04-24",
 	"assets": {
