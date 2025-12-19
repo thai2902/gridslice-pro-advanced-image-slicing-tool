@@ -1,6 +1,6 @@
 # Gridslice Pro
 
-[cloudflarebutton]
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/thai2902/gridslice-pro-advanced-image-slicing-tool)
 
 A production-ready full-stack application template built on Cloudflare Workers and Pages. Features a modern React frontend with shadcn/ui components, Tailwind CSS styling, and a Hono-powered API backend. Designed for rapid development, seamless deployment, and scalability on Cloudflare's edge network.
 
@@ -85,7 +85,7 @@ Alternatively, use the [Cloudflare dashboard](https://dash.cloudflare.com/) or W
 wrangler deploy
 ```
 
-[cloudflarebutton]
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/thai2902/gridslice-pro-advanced-image-slicing-tool)
 
 **Custom Domain**: Set `routes` in `wrangler.jsonc` and add via dashboard.
 
