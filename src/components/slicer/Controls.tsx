@@ -1,16 +1,16 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useSlicerStore, NumberPosition } from '@/store/useSlicerStore';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { 
-  Settings2, 
-  Type, 
-  RotateCcw, 
-  LayoutGrid, 
-  BoxSelect, 
-  Sparkles, 
+import {
+  Settings2,
+  Type,
+  RotateCcw,
+  LayoutGrid,
+  BoxSelect,
+  Sparkles,
   Info,
   ArrowUpLeft,
   ArrowUpRight,
@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { motion, AnimatePresence } from 'framer-motion';
 export function Controls() {
+  // CRITICAL: All hook calls MUST happen at the top, before any return statements.
   const configRows = useSlicerStore((s) => s.config.rows);
   const configCols = useSlicerStore((s) => s.config.cols);
   const configPadding = useSlicerStore((s) => s.config.padding);
@@ -42,18 +43,23 @@ export function Controls() {
   const colWidths = useSlicerStore((s) => s.colWidths);
   const recomputeUniformSizes = useSlicerStore((s) => s.recomputeUniformSizes);
   // Determine if proportions are custom
-  const isCustom = React.useMemo(() => {
+  const isCustom = useMemo(() => {
     if (rowHeights.length > 1 && !rowHeights.every(h => Math.abs(h - rowHeights[0]) < 0.1)) return true;
     if (colWidths.length > 1 && !colWidths.every(w => Math.abs(w - colWidths[0]) < 0.1)) return true;
     return false;
   }, [rowHeights, colWidths]);
+  // Conditional rendering happens AFTER all hook calls.
   if (!imageUrl) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-center space-y-4 py-20 px-4">
-        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-muted-foreground/40"><Settings2 className="w-6 h-6" /></div>
+        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-muted-foreground/40">
+          <Settings2 className="w-6 h-6" />
+        </div>
         <div className="space-y-1">
           <p className="text-sm font-semibold text-foreground">Studio Locked</p>
-          <p className="text-xs text-muted-foreground max-w-[200px] leading-relaxed">Upload an image to unlock advanced grid configurations and precision tools.</p>
+          <p className="text-xs text-muted-foreground max-w-[200px] leading-relaxed">
+            Upload an image to unlock advanced grid configurations and precision tools.
+          </p>
         </div>
       </div>
     );
@@ -82,14 +88,26 @@ export function Controls() {
                   <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Rows</Label>
                   <span className="text-xs font-mono bg-secondary font-bold text-secondary-foreground px-2 py-0.5 rounded border border-border">{configRows}</span>
                 </div>
-                <Slider value={[configRows]} min={1} max={24} step={1} onValueChange={([val]) => updateConfig({ rows: val })} />
+                <Slider 
+                  value={[configRows]} 
+                  min={1} 
+                  max={24} 
+                  step={1} 
+                  onValueChange={([val]) => updateConfig({ rows: val })} 
+                />
               </div>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Columns</Label>
                   <span className="text-xs font-mono bg-secondary font-bold text-secondary-foreground px-2 py-0.5 rounded border border-border">{configCols}</span>
                 </div>
-                <Slider value={[configCols]} min={1} max={24} step={1} onValueChange={([val]) => updateConfig({ cols: val })} />
+                <Slider 
+                  value={[configCols]} 
+                  min={1} 
+                  max={24} 
+                  step={1} 
+                  onValueChange={([val]) => updateConfig({ cols: val })} 
+                />
               </div>
               {isCustom && (
                 <Button variant="secondary" size="sm" className="w-full gap-2 text-[10px] font-bold uppercase" onClick={recomputeUniformSizes}>
@@ -110,16 +128,43 @@ export function Controls() {
           <AccordionContent className="pt-2 pb-6 space-y-6">
             <div className="space-y-5">
               <div className="space-y-3">
-                <div className="flex justify-between items-center"><Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Outer Padding</Label><span className="text-xs font-mono font-bold">{configPadding}px</span></div>
-                <Slider value={[configPadding]} min={0} max={250} step={1} onValueChange={([val]) => updateConfig({ padding: val })} />
+                <div className="flex justify-between items-center">
+                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Outer Padding</Label>
+                  <span className="text-xs font-mono font-bold">{configPadding}px</span>
+                </div>
+                <Slider 
+                  value={[configPadding]} 
+                  min={0} 
+                  max={250} 
+                  step={1} 
+                  onValueChange={([val]) => updateConfig({ padding: val })} 
+                />
               </div>
               <div className="space-y-3">
-                <div className="flex justify-between items-center"><Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Horiz. Gutters</Label><span className="text-xs font-mono font-bold">{configGapX}px</span></div>
-                <Slider value={[configGapX]} min={0} max={100} step={1} onValueChange={([val]) => updateConfig({ gapX: val })} />
+                <div className="flex justify-between items-center">
+                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Horiz. Gutters</Label>
+                  <span className="text-xs font-mono font-bold">{configGapX}px</span>
+                </div>
+                <Slider 
+                  value={[configGapX]} 
+                  min={0} 
+                  max={100} 
+                  step={1} 
+                  onValueChange={([val]) => updateConfig({ gapX: val })} 
+                />
               </div>
               <div className="space-y-3">
-                <div className="flex justify-between items-center"><Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Vert. Gutters</Label><span className="text-xs font-mono font-bold">{configGapY}px</span></div>
-                <Slider value={[configGapY]} min={0} max={100} step={1} onValueChange={([val]) => updateConfig({ gapY: val })} />
+                <div className="flex justify-between items-center">
+                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Vert. Gutters</Label>
+                  <span className="text-xs font-mono font-bold">{configGapY}px</span>
+                </div>
+                <Slider 
+                  value={[configGapY]} 
+                  min={0} 
+                  max={100} 
+                  step={1} 
+                  onValueChange={([val]) => updateConfig({ gapY: val })} 
+                />
               </div>
             </div>
           </AccordionContent>
@@ -138,11 +183,15 @@ export function Controls() {
                 <Label htmlFor="show-numbers" className="cursor-pointer text-sm font-semibold">Burn Labels</Label>
                 <p className="text-[10px] text-muted-foreground">Add index numbers to export</p>
               </div>
-              <Switch id="show-numbers" checked={configShowNumbers} onCheckedChange={(checked) => updateConfig({ showNumbers: checked })} />
+              <Switch 
+                id="show-numbers" 
+                checked={configShowNumbers} 
+                onCheckedChange={(checked) => updateConfig({ showNumbers: checked })} 
+              />
             </div>
             <AnimatePresence>
               {configShowNumbers && (
-                <motion.div 
+                <motion.div
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
@@ -151,7 +200,10 @@ export function Controls() {
                   <div className="flex items-center justify-between">
                     <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Position</Label>
                   </div>
-                  <Select value={configNumberPosition} onValueChange={(val: NumberPosition) => updateConfig({ numberPosition: val })}>
+                  <Select 
+                    value={configNumberPosition} 
+                    onValueChange={(val: NumberPosition) => updateConfig({ numberPosition: val })}
+                  >
                     <SelectTrigger className="w-full bg-secondary">
                       <SelectValue placeholder="Select position" />
                     </SelectTrigger>
@@ -195,7 +247,9 @@ export function Controls() {
         </p>
       </div>
       <div className="pt-4">
-        <Button variant="outline" size="sm" onClick={resetConfig} className="w-full gap-2 text-muted-foreground hover:text-foreground"><RotateCcw className="w-3 h-3" />Reset All Settings</Button>
+        <Button variant="outline" size="sm" onClick={resetConfig} className="w-full gap-2 text-muted-foreground hover:text-foreground">
+          <RotateCcw className="w-3 h-3" />Reset All Settings
+        </Button>
       </div>
     </div>
   );

@@ -34,11 +34,12 @@ const DEFAULT_CONFIG: GridConfig = {
   showNumbers: true,
   numberPosition: 'top-left',
 };
-const calculateUniformSizes = (total: number, count: number, padding: number, gap: number) => {
+export const calculateUniformSizes = (total: number, count: number, padding: number, gap: number) => {
   if (count <= 0) return [];
-  const available = Math.max(0, total - 2 * padding - (count - 1) * gap);
+  const totalGaps = (count - 1) * gap;
+  const available = Math.max(0, total - (2 * padding) - totalGaps);
   const size = available / count;
-  return new Array(count).fill(size);
+  return new Array(count).fill(Math.max(1, size));
 };
 export const useSlicerStore = create<SlicerState>()(
   persist(
